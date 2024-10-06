@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const session = require('express-session');
 require('dotenv').config();
 
 const app = express();
@@ -10,18 +11,28 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Set up session management
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your_default_secret', // Change this in production
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // Set to true if using HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
 // Step 1: Redirect to Twitch for authorization
 app.get('/auth/twitch', (req, res) => {
     const redirectUri = `https://id.twitch.tv/oauth2/authorize?client_id=${process.env.TWITCH_CLIENT_ID}&redirect_uri=${process.env.CALLBACK_URL}&response_type=code&scope=user:read:email`;
     res.redirect(redirectUri);
 });
 
-// Step 2: Handle the redirect from Twitch
 app.get('/auth/twitch/callback', async (req, res) => {
     const { code } = req.query; // Capture the authorization code
 
     try {
-        // Step 3: Exchange the authorization code for an access token
+        // Exchange the authorization code for an access token
         const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
             params: {
                 client_id: process.env.TWITCH_CLIENT_ID,
@@ -33,6 +44,9 @@ app.get('/auth/twitch/callback', async (req, res) => {
         });
 
         const accessToken = response.data.access_token;
+
+        // Store the access token in the session
+        req.session.accessToken = accessToken;
 
         // Fetch user data using the access token
         const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
@@ -48,10 +62,11 @@ app.get('/auth/twitch/callback', async (req, res) => {
             <img src="${userData.profile_image_url}" alt="${userData.display_name}" />
         `);
     } catch (error) {
-        console.error('Error during authentication:', error);
+        console.error('Error during authentication:', error.response ? error.response.data : error.message);
         res.status(500).send('Internal Server Error');
     }
 });
+
 
 // Basic endpoint for testing
 app.get('/', (req, res) => {
