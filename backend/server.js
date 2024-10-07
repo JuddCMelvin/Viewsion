@@ -29,6 +29,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/stream', streamRoutes);
 
 app.get('/', (req, res) => {
+    console.log('Session Data:', req.session); // Log the session data
+    
     if (req.session.accessToken) {
         // User is logged in
         res.send(`
@@ -45,6 +47,11 @@ app.get('/', (req, res) => {
             <a href="/auth/twitch">Login with Twitch</a>
         `);
     }
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
 });
 
 app.listen(PORT, () => {
