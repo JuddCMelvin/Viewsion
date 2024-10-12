@@ -30,15 +30,26 @@ app.use('/api/stream', streamRoutes);
 
 app.get('/', (req, res) => {
     console.log('Session Data:', req.session); // Log the session data
-    
+
     if (req.session.accessToken) {
-        // User is logged in
-        res.send(`
-            <h1>Welcome to the Twitch Stream App!</h1>
-            <p>You are logged in.</p>
-            <a href="/api/stream">View Your Stream Data</a><br>
-            <a href="/auth/logout">Logout</a>
-        `);
+        // User is logged in, fetch user data from the session
+        const userData = req.session.user; // Ensure user data is retrieved from session
+
+        if (userData) {
+            res.send(`
+                <h1>Welcome to the Twitch Stream App!</h1>
+                <p>You are logged in as <strong>${userData.displayName}</strong></p>
+                <img src="${userData.profileImage}" alt="${userData.displayName}'s profile image" /><br>
+                <a href="/api/stream">View Your Stream Data</a><br>
+                <a href="/auth/logout">Logout</a>
+            `);
+        } else {
+            res.send(`
+                <h1>Welcome to the Twitch Stream App!</h1>
+                <p>User data not found in session.</p>
+                <a href="/auth/twitch">Login with Twitch</a>
+            `);
+        }
     } else {
         // User is not logged in
         res.send(`
